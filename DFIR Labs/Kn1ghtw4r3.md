@@ -1175,7 +1175,7 @@ Lấy buffer khóa và mask:
 
 <img width="946" height="846" alt="image" src="https://github.com/user-attachments/assets/b2b192f4-3dbe-4b3d-8fb4-12f7b6020b30" />
 
-sau khi đã có đủ dữ kiện mình viết script giải mã:
+
 ```
 import os, sys
 from Crypto.Cipher import ChaCha20
