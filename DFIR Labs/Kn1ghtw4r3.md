@@ -1162,16 +1162,17 @@ for needle in (cand_hex, cand_txt):
         print(hex(o), d[max(0, o-48):o+72])
 ```
 <img width="1457" height="720" alt="image" src="https://github.com/user-attachments/assets/c4475c54-f8b2-4c3f-a71e-49f73147613b" />
+
 Ứng viên duy nhất có độ ngẫu nhiên thật là 53B79D63306C84B1B41749DF (chuỗi AAAABBBBCCCCDDDDEEEEFFFF là nhiễu). Chuỗi 353342373944363333303643 nằm ngay trước C:\Users\user\Downloads chính là mã hex ASCII của 12 ký tự đầu 53B79D63306C. Vậy nonce là chuỗi ASCII 53B79D63306C (12 byte).
 Lấy buffer khóa và mask:
-```
+
 0:000> dq 00007ff7`71c6d000 L8
 00007ff7`71c6d010  0000019a`07579e00 00000000`00000100   ; ptr, capacity
 00007ff7`71c6d020  00000000`000000e0 00000000`00000000   ; length
 
 0:000> .writemem C:\Users\Public\keys.bin 0000019a`07579e00 L?e0
 0:000> .writemem C:\Users\Public\mask.bin 00007ff7`71c5b500 L?20
-```
+
 
 <img width="946" height="846" alt="image" src="https://github.com/user-attachments/assets/b2b192f4-3dbe-4b3d-8fb4-12f7b6020b30" />
 
