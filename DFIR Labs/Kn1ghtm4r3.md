@@ -1203,7 +1203,7 @@ Giải mã xong vẫn chưa thu được flag nên mình nghĩ file đã bị h�
 <img width="1286" height="1023" alt="image" src="https://github.com/user-attachments/assets/447507a0-a615-41c3-a8c6-53294ca94f32" />
 
 Chúng ta có thể thấy vấn đề là vì 11 trường kích thước box bị đưa về 0 và 5 tên box bị đổi chữ. Phần dữ liệu bị hỏng là có chủ ý.HEIC là ISO BMFF, cùng họ với MP4: file là chuỗi box, mỗi box có header [size 4 byte big-endian][type 4 ký tự]. size tính cả header, nên box kế tiếp bắt đầu tại đầu box này + size. Box meta là box có phiên bản (FullBox), nên sau header có thêm 4 byte version/flags, và các box con bắt đầu cách đầu meta 12 byte
-Mình sẽ viết tiếp 1 script là boxmap.py để in vị trí các chuỗi 4 ký tự, cho thấy các tên hdlr, pitm, iinf, iprp và các phần khác vẫn đứng đúng chỗ, còn ityp, META, ILOC, MDAT là phiên bản sai chữ hoa/chữ. Từ đó suy ra cây box:
+Mình sẽ viết tiếp 1 script là boxmap.py để in vị trí các chuỗi 4 ký tự. Từ đó suy ra cây box:
 ```
 import sys, re
 d = open(sys.argv[1], "rb").read()
