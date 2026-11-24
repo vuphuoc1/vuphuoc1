@@ -1,0 +1,6 @@
+title: Vux_Phuoc blogs
+description: Writeup CTF, DFIR và HackTheBox
+theme: jekyll-theme-minimal
+exclude:
+  - DFIR Labs
+  - HackTheBox
