@@ -1,5 +1,14 @@
 DFIR 2025 Ⅰ - Lost In Router
 
+---
+render_with_liquid: false
+title: "DFIR 2025 Ⅰ - Lost In Router"
+date: 2025-11-26 10:36:00 +0700
+categories: [DFIR]
+tags: [CTF,DFIR Labs, FTK Imager]
+---
+
+
 Một router OpenWrt (ImmortalWrt) bị chiếm quyền ngày 04/07/2025 qua dịch vụ subconverter v0.7.2 chạy trên router; kẻ tấn công mở reverse shell, cài khóa SSH, chiếm tên miền nội bộ và chuyển hướng nhân viên sang trang giả trên Netlify.
 Đề bài: nhân viên mở website nội bộ, trình duyệt báo cập nhật, tải file về nhưng không thấy gì xảy ra; sau đó IT báo router của công ty đã bị hack. Tài liệu giao là router.img (~428 MB).
 
